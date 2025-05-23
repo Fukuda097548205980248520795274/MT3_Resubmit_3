@@ -47,29 +47,35 @@ int WINAPI WinMain(HINSTANCE, HINSTANCE, LPSTR, int)
 	Vector2 cursorRotateSum = { 0.0f , 0.0f };
 
 
-	// 円運動
-	CircularMotion circularMotion;
-	circularMotion.center = { 0.0f , 0.0f , 0.0f };
-	circularMotion.angle = 0.0f;
-	circularMotion.anglerVelocity = float(M_PI);
-	circularMotion.orbitRadius = 0.8f;
-	circularMotion.point = { 0.0f , 0.0f , 0.0f };
-	circularMotion.pointRadius = 0.03f;
-
-	// 点の初期位置
-	circularMotion.point =
+	// 振り子
+	Pendulum pendulum =
 	{
-		circularMotion.center.x + std::cos(circularMotion.angle) * circularMotion.orbitRadius,
-		circularMotion.center.y + std::sin(circularMotion.angle) * circularMotion.orbitRadius,
-		circularMotion.center.z
+		.anchor = {0.0f , 1.0f , 0.0f},
+		.length = 0.8f,
+		.angle = 0.7f,
+		.anglerVelocity = 0.0f,
+		.anglerAcceleration = 0.0f,
+		.point = {0.0f , 0.0f , 0.0f}
 	};
 
-
-	// 回転しているかどうか（回転フラグ）
-	int isRotation = false;
+	// 振り子が揺れているかどうか
+	uint32_t isPendulumShake = false;
 
 	// デルタタイム
 	float deltaTime = 1.0f / 60.0f;
+
+
+
+	/*   振り子の初期位置を求める   */
+
+	pendulum.anglerAcceleration =
+		-(9.8f / pendulum.length) * std::sin(pendulum.angle);
+	pendulum.anglerVelocity += pendulum.anglerAcceleration * deltaTime;
+	pendulum.angle += pendulum.anglerVelocity * deltaTime;
+
+	pendulum.point.x = pendulum.anchor.x + std::sin(pendulum.angle) * pendulum.length;
+	pendulum.point.y = pendulum.anchor.y - std::cos(pendulum.angle) * pendulum.length;
+	pendulum.point.z = pendulum.anchor.z;
 
 
 
@@ -91,19 +97,17 @@ int WINAPI WinMain(HINSTANCE, HINSTANCE, LPSTR, int)
 		ImGui::DragFloat3("cameraTranslate", &cameraTranslate.x, 0.01f);
 		ImGui::DragFloat3("cameraRotate", &cameraRotate.x, 0.01f);
 
-		// 回転していない（回転フラグがfalse）であるときに押すと、回転する（回転フラグがtrueになる）
-		if (isRotation == false)
+		if (isPendulumShake == false)
 		{
 			if (ImGui::Button("start"))
 			{
-				isRotation = true;
+				isPendulumShake = true;
 			}
 		} else
 		{
-			// 回転している（回転フラグがtrue）であるときに押すと、停止する（回転フラグがfalseになる）
 			if (ImGui::Button("stop"))
 			{
-				isRotation = false;
+				isPendulumShake = false;
 			}
 		}
 
@@ -145,28 +149,32 @@ int WINAPI WinMain(HINSTANCE, HINSTANCE, LPSTR, int)
 		}
 
 
-		/*-----------
-			円運動
-		-----------*/
 
-		// 回転する（回転フラグがtrueのとき）
-		if (isRotation)
+		/*----------------
+			振り子の動き
+		----------------*/
+
+		if (isPendulumShake)
 		{
-			// 角度を動かす
-			circularMotion.angle += circularMotion.anglerVelocity * deltaTime;
+			pendulum.anglerAcceleration =
+				-(9.8f / pendulum.length) * std::sin(pendulum.angle);
+			pendulum.anglerVelocity += pendulum.anglerAcceleration * deltaTime;
+			pendulum.angle += pendulum.anglerVelocity * deltaTime;
 
-			// 点の位置
-			circularMotion.point.x = circularMotion.center.x + std::cos(circularMotion.angle) * circularMotion.orbitRadius;
-			circularMotion.point.y = circularMotion.center.y + std::sin(circularMotion.angle) * circularMotion.orbitRadius;
-			circularMotion.point.z = circularMotion.center.z;
+			pendulum.point.x = pendulum.anchor.x + std::sin(pendulum.angle) * pendulum.length;
+			pendulum.point.y = pendulum.anchor.y - std::cos(pendulum.angle) * pendulum.length;
+			pendulum.point.z = pendulum.anchor.z;
 		}
 
+		// 描画する線
+		Segment segment;
+		segment.origin = pendulum.anchor;
+		segment.diff = { std::sin(pendulum.angle) * pendulum.length ,-std::cos(pendulum.angle) * pendulum.length , 0.0f };
 
-		// 球の描画
+		// 描画する球
 		Sphere sphere;
-		sphere.center = circularMotion.point;
-		sphere.radius = circularMotion.pointRadius;
-
+		sphere.center = pendulum.point;
+		sphere.radius = 0.05f;
 
 
 
@@ -195,7 +203,8 @@ int WINAPI WinMain(HINSTANCE, HINSTANCE, LPSTR, int)
 		// グリッド
 		DrawGrid(Multiply(viewMatrix, projectionMatrix), viewportMatrix);
 
-		// 球
+		// 線分
+		DrawSegment(segment, Multiply(viewMatrix, projectionMatrix), viewportMatrix, 0xFFFFFFFF);
 		DrawSphere(sphere, Multiply(viewMatrix, projectionMatrix), viewportMatrix, 0xFFFFFFFF);
 
 
