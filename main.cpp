@@ -47,21 +47,26 @@ int WINAPI WinMain(HINSTANCE, HINSTANCE, LPSTR, int)
 	Vector2 cursorRotateSum = { 0.0f , 0.0f };
 
 
-	// ばね
-	Spring spring;
-	spring.anchor = { 0.0f , 0.0f  ,0.0f };
-	spring.naturalLength = 1.0f;
-	spring.siffiness = 100.0f;
-	spring.dampingCoefficent = 2.0f;
+	// 円運動
+	CircularMotion circularMotion;
+	circularMotion.center = { 0.0f , 0.0f , 0.0f };
+	circularMotion.angle = 0.0f;
+	circularMotion.anglerVelocity = float(M_PI);
+	circularMotion.orbitRadius = 0.8f;
+	circularMotion.point = { 0.0f , 0.0f , 0.0f };
+	circularMotion.pointRadius = 0.03f;
 
-	// ボール
-	Ball ball;
-	ball.position = { 1.2f , 0.0f , 0.0f };
-	ball.velocity = { 0.0f , 0.0f , 0.0f };
-	ball.acceleration = { 0.0f , 0.0f , 0.0f };
-	ball.mass = 2.0f;
-	ball.radius = 0.05f;
-	ball.color = 0x0000FFFF;
+	// 点の初期位置
+	circularMotion.point =
+	{
+		circularMotion.center.x + std::cos(circularMotion.angle) * circularMotion.orbitRadius,
+		circularMotion.center.y + std::sin(circularMotion.angle) * circularMotion.orbitRadius,
+		circularMotion.center.z
+	};
+
+
+	// 回転しているかどうか（回転フラグ）
+	int isRotation = false;
 
 	// デルタタイム
 	float deltaTime = 1.0f / 60.0f;
@@ -85,10 +90,23 @@ int WINAPI WinMain(HINSTANCE, HINSTANCE, LPSTR, int)
 		ImGui::Begin("Window1");
 		ImGui::DragFloat3("cameraTranslate", &cameraTranslate.x, 0.01f);
 		ImGui::DragFloat3("cameraRotate", &cameraRotate.x, 0.01f);
-		if (ImGui::Button("start"))
+
+		// 回転していない（回転フラグがfalse）であるときに押すと、回転する（回転フラグがtrueになる）
+		if (isRotation == false)
 		{
-			ball.position = { 1.2f , 0.0f , 0.0f };
+			if (ImGui::Button("start"))
+			{
+				isRotation = true;
+			}
+		} else
+		{
+			// 回転している（回転フラグがtrue）であるときに押すと、停止する（回転フラグがfalseになる）
+			if (ImGui::Button("stop"))
+			{
+				isRotation = false;
+			}
 		}
+
 		ImGui::End();
 
 
@@ -127,60 +145,28 @@ int WINAPI WinMain(HINSTANCE, HINSTANCE, LPSTR, int)
 		}
 
 
-		/*-------------------
-			ばね と ボール
-		-------------------*/
+		/*-----------
+			円運動
+		-----------*/
 
-		// スペースキーで、ボールの位置を初期化する
-		if (!preKeys[DIK_SPACE] && keys[DIK_SPACE])
+		// 回転する（回転フラグがtrueのとき）
+		if (isRotation)
 		{
-			ball.position = { 1.2f , 0.0f , 0.0f };
+			// 角度を動かす
+			circularMotion.angle += circularMotion.anglerVelocity * deltaTime;
+
+			// 点の位置
+			circularMotion.point.x = circularMotion.center.x + std::cos(circularMotion.angle) * circularMotion.orbitRadius;
+			circularMotion.point.y = circularMotion.center.y + std::sin(circularMotion.angle) * circularMotion.orbitRadius;
+			circularMotion.point.z = circularMotion.center.z;
 		}
 
 
-		// ばねとボールの差分のベクトル
-		Vector3 diff = ball.position - spring.anchor;
-		float length = Length(diff);
-
-		if (length != 0.0f)
-		{
-			// ベクトルの方向
-			Vector3 direction = Normalize(diff);
-
-			// ばねの先の位置
-			Vector3 restPosition = spring.anchor + direction * spring.naturalLength;
-
-			// ばねによる力を求める
-			Vector3 displacement = length * (ball.position - restPosition);
-
-			// 復元力を計算する
-			Vector3 restoringForce = -spring.siffiness * displacement;
-
-			// 減衰抵抗を計算する
-			Vector3 dampingForce = -spring.dampingCoefficent * ball.velocity;
-
-			// 力を加算する
-			Vector3 force = restoringForce + dampingForce;
-
-			// 運動方程式で加速度を求める
-			ball.acceleration = force / ball.mass;
-		}
-
-		// 加速度を加算し、動かす
-		ball.velocity += ball.acceleration * deltaTime;
-		ball.position += ball.velocity * deltaTime;
-
-
-
-		// 描画用の線
-		Segment springSegment;
-		springSegment.origin = spring.anchor;
-		springSegment.diff = diff;
-
-		// 描画用の球
+		// 球の描画
 		Sphere sphere;
-		sphere.center = ball.position;
-		sphere.radius = ball.radius;
+		sphere.center = circularMotion.point;
+		sphere.radius = circularMotion.pointRadius;
+
 
 
 
@@ -209,13 +195,8 @@ int WINAPI WinMain(HINSTANCE, HINSTANCE, LPSTR, int)
 		// グリッド
 		DrawGrid(Multiply(viewMatrix, projectionMatrix), viewportMatrix);
 
-		// バネ
-		DrawSegment(springSegment, Multiply(viewMatrix, projectionMatrix), viewportMatrix, 0xFFFFFFFF);
-
 		// 球
-		DrawSphere(sphere, Multiply(viewMatrix, projectionMatrix), viewportMatrix, ball.color);
-
-		Novice::ScreenPrintf(4, 4, "space : Initialize  ball.position");
+		DrawSphere(sphere, Multiply(viewMatrix, projectionMatrix), viewportMatrix, 0xFFFFFFFF);
 
 
 		///
