@@ -47,36 +47,29 @@ int WINAPI WinMain(HINSTANCE, HINSTANCE, LPSTR, int)
 	Vector2 cursorRotateSum = { 0.0f , 0.0f };
 
 
-	// 円錐振り子
-	ConicalPendulum conicalPendulum =
+	// 平面
+	Plane plane =
 	{
-		.anchor = {0.0f , 1.0f , 0.0f},
-		.length = 0.8f,
-		.halfApexAngle = 0.7f,
-		.angle = 0.0f,
-		.anglerVelocity = 0.0f,
-		.point = {0.0f , 0.0f , 0.0f}
+		.normal = Normalize({-0.2f , 0.9f , -0.3f}),
+		.distance = 0.0f
 	};
 
-	// 振り子が揺れているかどうか
-	uint32_t isPendulumShake = false;
+	// ボール
+	Ball ball =
+	{
+		.position = {0.8f , 1.2f , 0.3f},
+		.velocity = {0.0f , 0.0f , 0.0f},
+		.acceleration = {0.0f , -9.8f , 0.0f},
+		.mass = 2.0f,
+		.radius = 0.05f,
+		.color = 0xFFFFFFFF
+	};
 
 	// デルタタイム
 	float deltaTime = 1.0f / 60.0f;
 
-
-
-	/*   振り子の初期位置を求める   */
-
-	conicalPendulum.anglerVelocity = std::sqrt(9.8f / (conicalPendulum.length * std::cos(conicalPendulum.halfApexAngle)));
-	conicalPendulum.angle += conicalPendulum.anglerVelocity * deltaTime;
-
-	float radius = std::sin(conicalPendulum.halfApexAngle) * conicalPendulum.length;
-	float height = std::cos(conicalPendulum.halfApexAngle) * conicalPendulum.length;
-
-	conicalPendulum.point.x = conicalPendulum.anchor.x + std::cos(conicalPendulum.angle) * radius;
-	conicalPendulum.point.y = conicalPendulum.anchor.y - height;
-	conicalPendulum.point.z = conicalPendulum.anchor.z - std::sin(conicalPendulum.angle) * radius;
+	// 反発係数
+	float e = 0.8f;
 
 
 
@@ -97,21 +90,12 @@ int WINAPI WinMain(HINSTANCE, HINSTANCE, LPSTR, int)
 		ImGui::Begin("Window1");
 		ImGui::DragFloat3("cameraTranslate", &cameraTranslate.x, 0.01f);
 		ImGui::DragFloat3("cameraRotate", &cameraRotate.x, 0.01f);
-		ImGui::DragFloat("Length", &conicalPendulum.length, 0.01f);
-		ImGui::DragFloat("HalfApexLength", &conicalPendulum.halfApexAngle, 0.01f);
 
-		if (isPendulumShake == false)
+		if (ImGui::Button("start"))
 		{
-			if (ImGui::Button("start"))
-			{
-				isPendulumShake = true;
-			}
-		} else
-		{
-			if (ImGui::Button("stop"))
-			{
-				isPendulumShake = false;
-			}
+			ball.position = { 0.8f , 1.2f , 0.3f };
+			ball.velocity = { 0.0f , 0.0f , 0.0f };
+			ball.acceleration = { 0.0f , -9.8f , 0.0f };
 		}
 
 		ImGui::End();
@@ -152,34 +136,32 @@ int WINAPI WinMain(HINSTANCE, HINSTANCE, LPSTR, int)
 		}
 
 
-
 		/*----------------
-			振り子の動き
+			ボールの動き
 		----------------*/
 
-		if (isPendulumShake)
-		{
-			conicalPendulum.anglerVelocity = std::sqrt(9.8f / (conicalPendulum.length * std::cos(conicalPendulum.halfApexAngle)));
-			conicalPendulum.angle += conicalPendulum.anglerVelocity * deltaTime;
+		ball.velocity += ball.acceleration * deltaTime;
+		ball.position += ball.velocity * deltaTime;
 
-			radius = std::sin(conicalPendulum.halfApexAngle) * conicalPendulum.length;
-			height = std::cos(conicalPendulum.halfApexAngle) * conicalPendulum.length;
-
-			conicalPendulum.point.x = conicalPendulum.anchor.x + std::cos(conicalPendulum.angle) * radius;
-			conicalPendulum.point.y = conicalPendulum.anchor.y - height;
-			conicalPendulum.point.z = conicalPendulum.anchor.z - std::sin(conicalPendulum.angle) * radius;
-		}
-
-		// 描画する線
-		Segment segment;
-		segment.origin = conicalPendulum.anchor;
-		segment.diff = { std::cos(conicalPendulum.angle) * radius ,-height , -std::sin(conicalPendulum.angle) * radius };
-
-		// 描画する球
+		// ボールの描画で使う球
 		Sphere sphere;
-		sphere.center = conicalPendulum.point;
-		sphere.radius = 0.05f;
+		sphere.center = ball.position;
+		sphere.radius = ball.radius;
 
+		// 平面と球の衝突応答
+		if (IsCollision(sphere, plane))
+		{
+			// 反射したベクトル
+			Vector3 reflected = Reflect(ball.velocity, plane.normal);
+
+			// 法線の射影ベクトル
+			Vector3 projectToNormal = Project(reflected, plane.normal);
+
+			// 弾が進む方向
+			Vector3 movingDirection = reflected - projectToNormal;
+
+			ball.velocity = projectToNormal * e + movingDirection;
+		}
 
 
 		/*-------------------
@@ -207,9 +189,11 @@ int WINAPI WinMain(HINSTANCE, HINSTANCE, LPSTR, int)
 		// グリッド
 		DrawGrid(Multiply(viewMatrix, projectionMatrix), viewportMatrix);
 
-		// 線分
-		DrawSegment(segment, Multiply(viewMatrix, projectionMatrix), viewportMatrix, 0xFFFFFFFF);
-		DrawSphere(sphere, Multiply(viewMatrix, projectionMatrix), viewportMatrix, 0xFFFFFFFF);
+		// 平面
+		DrawPlane(plane, Multiply(viewMatrix, projectionMatrix), viewportMatrix, 0xFFFFFFFF);
+
+		// ボール
+		DrawSphere(sphere, Multiply(viewMatrix, projectionMatrix), viewportMatrix, ball.color);
 
 
 		///
