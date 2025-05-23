@@ -47,14 +47,14 @@ int WINAPI WinMain(HINSTANCE, HINSTANCE, LPSTR, int)
 	Vector2 cursorRotateSum = { 0.0f , 0.0f };
 
 
-	// 振り子
-	Pendulum pendulum =
+	// 円錐振り子
+	ConicalPendulum conicalPendulum =
 	{
 		.anchor = {0.0f , 1.0f , 0.0f},
 		.length = 0.8f,
-		.angle = 0.7f,
+		.halfApexAngle = 0.7f,
+		.angle = 0.0f,
 		.anglerVelocity = 0.0f,
-		.anglerAcceleration = 0.0f,
 		.point = {0.0f , 0.0f , 0.0f}
 	};
 
@@ -68,14 +68,15 @@ int WINAPI WinMain(HINSTANCE, HINSTANCE, LPSTR, int)
 
 	/*   振り子の初期位置を求める   */
 
-	pendulum.anglerAcceleration =
-		-(9.8f / pendulum.length) * std::sin(pendulum.angle);
-	pendulum.anglerVelocity += pendulum.anglerAcceleration * deltaTime;
-	pendulum.angle += pendulum.anglerVelocity * deltaTime;
+	conicalPendulum.anglerVelocity = std::sqrt(9.8f / (conicalPendulum.length * std::cos(conicalPendulum.halfApexAngle)));
+	conicalPendulum.angle += conicalPendulum.anglerVelocity * deltaTime;
 
-	pendulum.point.x = pendulum.anchor.x + std::sin(pendulum.angle) * pendulum.length;
-	pendulum.point.y = pendulum.anchor.y - std::cos(pendulum.angle) * pendulum.length;
-	pendulum.point.z = pendulum.anchor.z;
+	float radius = std::sin(conicalPendulum.halfApexAngle) * conicalPendulum.length;
+	float height = std::cos(conicalPendulum.halfApexAngle) * conicalPendulum.length;
+
+	conicalPendulum.point.x = conicalPendulum.anchor.x + std::cos(conicalPendulum.angle) * radius;
+	conicalPendulum.point.y = conicalPendulum.anchor.y - height;
+	conicalPendulum.point.z = conicalPendulum.anchor.z - std::sin(conicalPendulum.angle) * radius;
 
 
 
@@ -96,6 +97,8 @@ int WINAPI WinMain(HINSTANCE, HINSTANCE, LPSTR, int)
 		ImGui::Begin("Window1");
 		ImGui::DragFloat3("cameraTranslate", &cameraTranslate.x, 0.01f);
 		ImGui::DragFloat3("cameraRotate", &cameraRotate.x, 0.01f);
+		ImGui::DragFloat("Length", &conicalPendulum.length, 0.01f);
+		ImGui::DragFloat("HalfApexLength", &conicalPendulum.halfApexAngle, 0.01f);
 
 		if (isPendulumShake == false)
 		{
@@ -156,24 +159,25 @@ int WINAPI WinMain(HINSTANCE, HINSTANCE, LPSTR, int)
 
 		if (isPendulumShake)
 		{
-			pendulum.anglerAcceleration =
-				-(9.8f / pendulum.length) * std::sin(pendulum.angle);
-			pendulum.anglerVelocity += pendulum.anglerAcceleration * deltaTime;
-			pendulum.angle += pendulum.anglerVelocity * deltaTime;
+			conicalPendulum.anglerVelocity = std::sqrt(9.8f / (conicalPendulum.length * std::cos(conicalPendulum.halfApexAngle)));
+			conicalPendulum.angle += conicalPendulum.anglerVelocity * deltaTime;
 
-			pendulum.point.x = pendulum.anchor.x + std::sin(pendulum.angle) * pendulum.length;
-			pendulum.point.y = pendulum.anchor.y - std::cos(pendulum.angle) * pendulum.length;
-			pendulum.point.z = pendulum.anchor.z;
+			radius = std::sin(conicalPendulum.halfApexAngle) * conicalPendulum.length;
+			height = std::cos(conicalPendulum.halfApexAngle) * conicalPendulum.length;
+
+			conicalPendulum.point.x = conicalPendulum.anchor.x + std::cos(conicalPendulum.angle) * radius;
+			conicalPendulum.point.y = conicalPendulum.anchor.y - height;
+			conicalPendulum.point.z = conicalPendulum.anchor.z - std::sin(conicalPendulum.angle) * radius;
 		}
 
 		// 描画する線
 		Segment segment;
-		segment.origin = pendulum.anchor;
-		segment.diff = { std::sin(pendulum.angle) * pendulum.length ,-std::cos(pendulum.angle) * pendulum.length , 0.0f };
+		segment.origin = conicalPendulum.anchor;
+		segment.diff = { std::cos(conicalPendulum.angle) * radius ,-height , -std::sin(conicalPendulum.angle) * radius };
 
 		// 描画する球
 		Sphere sphere;
-		sphere.center = pendulum.point;
+		sphere.center = conicalPendulum.point;
 		sphere.radius = 0.05f;
 
 
