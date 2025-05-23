@@ -47,31 +47,17 @@ int WINAPI WinMain(HINSTANCE, HINSTANCE, LPSTR, int)
 	Vector2 cursorRotateSum = { 0.0f , 0.0f };
 
 
-	/// [0] 肩   [1] 肘   [2] 手
-
-	// 移動
-	Vector3 translate[3] =
-	{
-		{0.2f , 1.0f , 0.0f},
-		{0.4f , 0.0f , 0.0f},
-		{0.3f , 0.0f , 0.0f}
-	};
-
-	// 回転
-	Vector3 rotate[3] =
-	{
-		{0.0f , 0.0f , -6.8f},
-		{0.0f , 0.0f , -1.4f},
-		{0.0f , 0.0f , 0.0f}
-	};
-
-	// 拡縮
-	Vector3 scale[3] =
-	{
-		{1.0f , 1.0f , 1.0f},
-		{1.0f , 1.0f , 1.0f},
-		{1.0f , 1.0f , 1.0f}
-	};
+	// 演算子オーバーロードで使用する変数
+	Vector3 a{ 0.2f , 1.0f , 0.0f };
+	Vector3 b{ 2.4f , 3.1f , 1.2f };
+	Vector3 c = a + b;
+	Vector3 d = a - b;
+	Vector3 e = a * 2.4f;
+	Vector3 rotate{ 0.4f , 1.43f , -0.8f };
+	Matrix4x4 rotateXMatrix = MakeRotateXMatrix(rotate.x);
+	Matrix4x4 rotateYMatrix = MakeRotateYMatrix(rotate.y);
+	Matrix4x4 rotateZMatrix = MakeRotateZMatrix(rotate.z);
+	Matrix4x4 rotateMatrix = rotateXMatrix * rotateYMatrix * rotateZMatrix;
 
 
 
@@ -89,18 +75,23 @@ int WINAPI WinMain(HINSTANCE, HINSTANCE, LPSTR, int)
 		/// ↓更新処理ここから
 		///
 
-		ImGui::Begin("Window");
+		ImGui::Begin("Window1");
 		ImGui::DragFloat3("cameraTranslate", &cameraTranslate.x, 0.01f);
 		ImGui::DragFloat3("cameraRotate", &cameraRotate.x, 0.01f);
-		ImGui::DragFloat3("translate[0]", &translate[0].x, 0.01f);
-		ImGui::DragFloat3("rotate[0]", &rotate[0].x, 0.01f);
-		ImGui::DragFloat3("scale[0]", &scale[0].x, 0.01f);
-		ImGui::DragFloat3("translate[1]", &translate[1].x, 0.01f);
-		ImGui::DragFloat3("rotate[1]", &rotate[1].x, 0.01f);
-		ImGui::DragFloat3("scale[1]", &scale[1].x, 0.01f);
-		ImGui::DragFloat3("translate[2]", &translate[2].x, 0.01f);
-		ImGui::DragFloat3("rotate[2]", &rotate[2].x, 0.01f);
-		ImGui::DragFloat3("scale[2]", &scale[2].x, 0.01f);
+		ImGui::End();
+
+		ImGui::Begin("Window2");
+		ImGui::Text("c:%f, %f, %f", c.x, c.y, c.z);
+		ImGui::Text("d:%f, %f, %f", d.x, d.y, d.z);
+		ImGui::Text("e:%f, %f, %f", e.x, e.y, e.z);
+		ImGui::Text
+		(
+			"matrix: \n%f, %f, %f, %f \n%f, %f, %f, %f \n%f, %f, %f, %f \n%f, %f, %f, %f \n",
+			rotateMatrix.m[0][0], rotateMatrix.m[0][1], rotateMatrix.m[0][2], rotateMatrix.m[0][3],
+			rotateMatrix.m[1][0], rotateMatrix.m[1][1], rotateMatrix.m[1][2], rotateMatrix.m[1][3],
+			rotateMatrix.m[2][0], rotateMatrix.m[2][1], rotateMatrix.m[2][2], rotateMatrix.m[2][3],
+			rotateMatrix.m[3][0], rotateMatrix.m[3][1], rotateMatrix.m[3][2], rotateMatrix.m[3][3]
+		);
 		ImGui::End();
 
 
@@ -140,25 +131,6 @@ int WINAPI WinMain(HINSTANCE, HINSTANCE, LPSTR, int)
 
 
 		/*-------------------
-			階層構造を作る
-		-------------------*/
-
-		Matrix4x4 worldMatrix[3];
-		worldMatrix[0] = MakeAffineMatrix(scale[0], rotate[0], translate[0]);
-		worldMatrix[1] = Multiply(MakeAffineMatrix(scale[1], rotate[1], translate[1]), worldMatrix[0]);
-		worldMatrix[2] = Multiply(MakeAffineMatrix(scale[2], rotate[2], translate[2]), worldMatrix[1]);
-
-		// 球
-		Sphere sphere[3];
-
-		for (uint32_t i = 0; i < 3; i++)
-		{
-			sphere[i].center = { worldMatrix[i].m[3][0] , worldMatrix[i].m[3][1] , worldMatrix[i].m[3][2] };
-			sphere[i].radius = 0.05f;
-		}
-
-
-		/*-------------------
 			座標変換の行列
 		-------------------*/
 
@@ -172,14 +144,6 @@ int WINAPI WinMain(HINSTANCE, HINSTANCE, LPSTR, int)
 		Matrix4x4 viewportMatrix = MakeViewportMatrix(0.0f, 0.0f, static_cast<float>(kWindowWidth), static_cast<float>(kWindowHeight), 0.0f, 1.0f);
 
 
-		// 点のスクリーン座標
-		Vector3 screenPoint[3];
-		for (uint32_t i = 0; i < 3; i++)
-		{
-			screenPoint[i] = Transform(Transform(sphere[i].center, Multiply(viewMatrix, projectionMatrix)), viewportMatrix);
-		}
-
-
 		///
 		/// ↑更新処理ここまで
 		///
@@ -190,27 +154,6 @@ int WINAPI WinMain(HINSTANCE, HINSTANCE, LPSTR, int)
 
 		// グリッド
 		DrawGrid(Multiply(viewMatrix, projectionMatrix), viewportMatrix);
-
-
-		// 部位をつなぐ線
-		Novice::DrawLine
-		(
-			static_cast<int>(screenPoint[0].x), static_cast<int>(screenPoint[0].y),
-			static_cast<int>(screenPoint[1].x), static_cast<int>(screenPoint[1].y),
-			0xFFFFFFFF
-		);
-
-		Novice::DrawLine
-		(
-			static_cast<int>(screenPoint[1].x), static_cast<int>(screenPoint[1].y),
-			static_cast<int>(screenPoint[2].x), static_cast<int>(screenPoint[2].y),
-			0xFFFFFFFF
-		);
-
-		// 部位の球
-		DrawSphere(sphere[0], Multiply(viewMatrix, projectionMatrix), viewportMatrix, 0xFF0000FF);
-		DrawSphere(sphere[1], Multiply(viewMatrix, projectionMatrix), viewportMatrix, 0x00FF00FF);
-		DrawSphere(sphere[2], Multiply(viewMatrix, projectionMatrix), viewportMatrix, 0x0000FFFF);
 
 
 		///
