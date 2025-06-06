@@ -1,5 +1,4 @@
 #include <Novice.h>
-#include <iostream>
 #include "Struct.h"
 #include "Const.h"
 #include "./Func/Vector/Vector.h"
@@ -47,29 +46,15 @@ int WINAPI WinMain(HINSTANCE, HINSTANCE, LPSTR, int)
 	Vector2 cursorRotateSum = { 0.0f , 0.0f };
 
 
+	// 線分
+	Segment segment;
+	segment.origin = { -0.5f , -0.5f , 0.0f };
+	segment.diff = { 1.0f , 1.0f , 0.0f };
+
 	// 平面
-	Plane plane =
-	{
-		.normal = Normalize({-0.2f , 0.9f , -0.3f}),
-		.distance = 0.0f
-	};
-
-	// ボール
-	Ball ball =
-	{
-		.position = {0.8f , 1.2f , 0.3f},
-		.velocity = {0.0f , 0.0f , 0.0f},
-		.acceleration = {0.0f , -9.8f , 0.0f},
-		.mass = 2.0f,
-		.radius = 0.05f,
-		.color = 0xFFFFFFFF
-	};
-
-	// デルタタイム
-	float deltaTime = 1.0f / 60.0f;
-
-	// 反発係数
-	float e = 0.8f;
+	Plane plane;
+	plane.normal = { 0.0f , 1.0f , 0.0f };
+	plane.distance = 0.0f;
 
 
 
@@ -87,19 +72,18 @@ int WINAPI WinMain(HINSTANCE, HINSTANCE, LPSTR, int)
 		/// ↓更新処理ここから
 		///
 
-		ImGui::Begin("Window1");
+		ImGui::Begin("Window");
 		ImGui::DragFloat3("cameraTranslate", &cameraTranslate.x, 0.01f);
 		ImGui::DragFloat3("cameraRotate", &cameraRotate.x, 0.01f);
-
-		if (ImGui::Button("start"))
-		{
-			ball.position = { 0.8f , 1.2f , 0.3f };
-			ball.velocity = { 0.0f , 0.0f , 0.0f };
-			ball.acceleration = { 0.0f , -9.8f , 0.0f };
-		}
-
+		ImGui::DragFloat3("planeNormal", &plane.normal.x, 0.01f);
+		ImGui::DragFloat("planeDistance", &plane.distance, 0.01f);
+		ImGui::DragFloat3("segmentOrigin", &segment.origin.x, 0.01f);
+		ImGui::DragFloat3("segmentDiff", &segment.diff.x, 0.01f);
 		ImGui::End();
 
+
+		// 法線を正規化する
+		plane.normal = Normalize(plane.normal);
 
 
 		/*----------------
@@ -136,32 +120,8 @@ int WINAPI WinMain(HINSTANCE, HINSTANCE, LPSTR, int)
 		}
 
 
-		/*----------------
-			ボールの動き
-		----------------*/
 
-		ball.velocity += ball.acceleration * deltaTime;
-		ball.position += ball.velocity * deltaTime;
 
-		// ボールの描画で使う球
-		Sphere sphere;
-		sphere.center = ball.position;
-		sphere.radius = ball.radius;
-
-		// 平面と球の衝突応答
-		if (IsCollision(sphere, plane))
-		{
-			// 反射したベクトル
-			Vector3 reflected = Reflect(ball.velocity, plane.normal);
-
-			// 法線の射影ベクトル
-			Vector3 projectToNormal = Project(reflected, plane.normal);
-
-			// 弾が進む方向
-			Vector3 movingDirection = reflected - projectToNormal;
-
-			ball.velocity = projectToNormal * e + movingDirection;
-		}
 
 
 		/*-------------------
@@ -192,8 +152,16 @@ int WINAPI WinMain(HINSTANCE, HINSTANCE, LPSTR, int)
 		// 平面
 		DrawPlane(plane, Multiply(viewMatrix, projectionMatrix), viewportMatrix, 0xFFFFFFFF);
 
-		// ボール
-		DrawSphere(sphere, Multiply(viewMatrix, projectionMatrix), viewportMatrix, ball.color);
+
+		// 衝突したら（衝突フラグがtrue）、線分が赤くなる
+		if (IsCollision(segment, plane))
+		{
+			DrawSegment(segment, Multiply(viewMatrix, projectionMatrix), viewportMatrix, 0xFF0000FF);
+		} else
+		{
+			// 衝突していないときは（衝突フラグがfalse）、線分が白くなる
+			DrawSegment(segment, Multiply(viewMatrix, projectionMatrix), viewportMatrix, 0xFFFFFFFF);
+		}
 
 
 		///
