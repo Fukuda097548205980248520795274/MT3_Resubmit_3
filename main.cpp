@@ -48,13 +48,14 @@ int WINAPI WinMain(HINSTANCE, HINSTANCE, LPSTR, int)
 
 	// 線分
 	Segment segment;
-	segment.origin = { -0.5f , -0.5f , 0.0f };
-	segment.diff = { 1.0f , 1.0f , 0.0f };
+	segment.origin = { 0.0f , 0.0f , 0.0f };
+	segment.diff = { 0.0f , 0.0f , 0.5f };
 
-	// 平面
-	Plane plane;
-	plane.normal = { 0.0f , 1.0f , 0.0f };
-	plane.distance = 0.0f;
+	// 三角形
+	Triangle triangle;
+	triangle.vertices[0] = { 0.0f , 0.5f , 2.0f };
+	triangle.vertices[1] = { 0.5f , -0.5f , 2.0f };
+	triangle.vertices[2] = { -0.5f , -0.5f , 2.0f };
 
 
 
@@ -75,15 +76,12 @@ int WINAPI WinMain(HINSTANCE, HINSTANCE, LPSTR, int)
 		ImGui::Begin("Window");
 		ImGui::DragFloat3("cameraTranslate", &cameraTranslate.x, 0.01f);
 		ImGui::DragFloat3("cameraRotate", &cameraRotate.x, 0.01f);
-		ImGui::DragFloat3("planeNormal", &plane.normal.x, 0.01f);
-		ImGui::DragFloat("planeDistance", &plane.distance, 0.01f);
 		ImGui::DragFloat3("segmentOrigin", &segment.origin.x, 0.01f);
 		ImGui::DragFloat3("segmentDiff", &segment.diff.x, 0.01f);
+		ImGui::DragFloat3("triangleVertices[0]", &triangle.vertices[0].x, 0.01f);
+		ImGui::DragFloat3("triangleVertices[1]", &triangle.vertices[1].x, 0.01f);
+		ImGui::DragFloat3("triangleVertices[2]", &triangle.vertices[2].x, 0.01f);
 		ImGui::End();
-
-
-		// 法線を正規化する
-		plane.normal = Normalize(plane.normal);
 
 
 		/*----------------
@@ -120,10 +118,6 @@ int WINAPI WinMain(HINSTANCE, HINSTANCE, LPSTR, int)
 		}
 
 
-
-
-
-
 		/*-------------------
 			座標変換の行列
 		-------------------*/
@@ -149,19 +143,19 @@ int WINAPI WinMain(HINSTANCE, HINSTANCE, LPSTR, int)
 		// グリッド
 		DrawGrid(Multiply(viewMatrix, projectionMatrix), viewportMatrix);
 
-		// 平面
-		DrawPlane(plane, Multiply(viewMatrix, projectionMatrix), viewportMatrix, 0xFFFFFFFF);
+		// 三角形
+		DrawTriangle(triangle, Multiply(viewMatrix, projectionMatrix), viewportMatrix, 0xFFFFFFFF);
 
-
-		// 衝突したら（衝突フラグがtrue）、線分が赤くなる
-		if (IsCollision(segment, plane))
+		// 衝突したら（衝突フラグがtrue）、線を赤くする
+		if (IsCollision(triangle, segment))
 		{
 			DrawSegment(segment, Multiply(viewMatrix, projectionMatrix), viewportMatrix, 0xFF0000FF);
 		} else
 		{
-			// 衝突していないときは（衝突フラグがfalse）、線分が白くなる
+			// 衝突していなかったら（衝突フラグがfalse）、線を白くする
 			DrawSegment(segment, Multiply(viewMatrix, projectionMatrix), viewportMatrix, 0xFFFFFFFF);
 		}
+
 
 
 		///
