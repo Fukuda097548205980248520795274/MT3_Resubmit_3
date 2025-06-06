@@ -1,4 +1,5 @@
 #include <Novice.h>
+#include <iostream>
 #include "Struct.h"
 #include "Const.h"
 #include "./Func/Vector/Vector.h"
@@ -47,15 +48,18 @@ int WINAPI WinMain(HINSTANCE, HINSTANCE, LPSTR, int)
 
 
 	// 線分
-	Segment segment;
-	segment.origin = { 0.0f , 0.0f , 0.0f };
-	segment.diff = { 0.0f , 0.0f , 0.5f };
+	Segment segment
+	{
+		.origin = {-0.7f , 0.3f , 0.0f},
+		.diff = {2.0f , -0.5f , 0.0f}
+	};
 
-	// 三角形
-	Triangle triangle;
-	triangle.vertices[0] = { 0.0f , 0.5f , 2.0f };
-	triangle.vertices[1] = { 0.5f , -0.5f , 2.0f };
-	triangle.vertices[2] = { -0.5f , -0.5f , 2.0f };
+	// AABB
+	AABB aabb
+	{
+		.min{-0.5f , -0.5f , -0.5f},
+		.max{0.5f , 0.5f , 0.5f},
+	};
 
 
 
@@ -76,12 +80,25 @@ int WINAPI WinMain(HINSTANCE, HINSTANCE, LPSTR, int)
 		ImGui::Begin("Window");
 		ImGui::DragFloat3("cameraTranslate", &cameraTranslate.x, 0.01f);
 		ImGui::DragFloat3("cameraRotate", &cameraRotate.x, 0.01f);
+		ImGui::DragFloat3("aabb1Min", &aabb.min.x, 0.01f);
+		ImGui::DragFloat3("aabb1Max", &aabb.max.x, 0.01f);
 		ImGui::DragFloat3("segmentOrigin", &segment.origin.x, 0.01f);
 		ImGui::DragFloat3("segmentDiff", &segment.diff.x, 0.01f);
-		ImGui::DragFloat3("triangleVertices[0]", &triangle.vertices[0].x, 0.01f);
-		ImGui::DragFloat3("triangleVertices[1]", &triangle.vertices[1].x, 0.01f);
-		ImGui::DragFloat3("triangleVertices[2]", &triangle.vertices[2].x, 0.01f);
 		ImGui::End();
+
+
+
+		// 最小点と最大点が逆にならないようにする
+
+		aabb.min.x = (std::min)(aabb.min.x, aabb.max.x);
+		aabb.max.x = (std::max)(aabb.min.x, aabb.max.x);
+
+		aabb.min.y = (std::min)(aabb.min.y, aabb.max.y);
+		aabb.max.y = (std::max)(aabb.min.y, aabb.max.y);
+
+		aabb.min.z = (std::min)(aabb.min.z, aabb.max.z);
+		aabb.max.z = (std::max)(aabb.min.z, aabb.max.z);
+
 
 
 		/*----------------
@@ -143,19 +160,18 @@ int WINAPI WinMain(HINSTANCE, HINSTANCE, LPSTR, int)
 		// グリッド
 		DrawGrid(Multiply(viewMatrix, projectionMatrix), viewportMatrix);
 
-		// 三角形
-		DrawTriangle(triangle, Multiply(viewMatrix, projectionMatrix), viewportMatrix, 0xFFFFFFFF);
+		// 線分
+		DrawSegment(segment, Multiply(viewMatrix, projectionMatrix), viewportMatrix, 0xFFFFFFFF);
 
-		// 衝突したら（衝突フラグがtrue）、線を赤くする
-		if (IsCollision(triangle, segment))
+		// 衝突したら（衝突フラグがtrue）、AABBが赤くなる
+		if (IsCollision(aabb, segment))
 		{
-			DrawSegment(segment, Multiply(viewMatrix, projectionMatrix), viewportMatrix, 0xFF0000FF);
+			DrawAABB(aabb, Multiply(viewMatrix, projectionMatrix), viewportMatrix, 0xFF0000FF);
 		} else
 		{
-			// 衝突していなかったら（衝突フラグがfalse）、線を白くする
-			DrawSegment(segment, Multiply(viewMatrix, projectionMatrix), viewportMatrix, 0xFFFFFFFF);
+			// 衝突していなかったら（衝突フラグがfalse）、AABBが白くなる
+			DrawAABB(aabb, Multiply(viewMatrix, projectionMatrix), viewportMatrix, 0xFFFFFFFF);
 		}
-
 
 
 		///
